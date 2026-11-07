@@ -1,19 +1,28 @@
 # How the build system works
 
-This repository builds and releases an Alibre Design add-on with GitHub Actions, using GitHub's own hosted
-machines. None of it depends on what the add-on does.
+This repository demonstrates how to build and release an Alibre Design add-on with GitHub Actions, using GitHub's own hosted machines, which are free for public repositories.
 
-## The problem
+## The Problem
 
-To compile, an add-on needs files that ship with Alibre Design, such as `AlibreX.dll`. That causes two problems:
+To compile, an add-on needs files that ship with Alibre Design, such as `AlibreX.dll`. That causes some problems:
 
-- GitHub's machines don't have Alibre installed, so they don't have those files.
-- The files aren't yours to publish, so they can't go in a public repository or a release.
+- GitHub's Windows machines ("runners") don't have Alibre installed, so they don't have those files.
+- It's not practical to install Alibre on a GitHub "runner", because there is no stable/supported way of activating the license without human involvement.
+- The proprietary DLLs are not yours to publish - Alibre only wants them to be available to users with an Alibre license. So including them in a public open-source add-on repository would be violating Alibre's license terms.
 
-## The approach
+The usual approach to this, on a small scale, is for the developer of the add-on to simply perform all the builds on their local machine, with a licensed/activated copy of Alibre (which means they have the necessary DLLs). While this technically works, it is has some major downsides:
+* It's annoyingly manual for developers to create new Releases of the add-on. The process can be tedious and error-prone, especially if things like version metadata need to be incorporated into the add-on.
+* The add-on is not necessarily built in a "sterile" environment - other factors on the developer's local machine could "contaminate" the released binaries and cause unexpected issues. This is a general principle of modern software development, not an Alibre-specific issue.
+* It scales very poorly to open-source add-ons with many contributors. There may be 6 people who contributed code to a release, but one person still has to run the final build to generate the releaseable binaries.
+* It doesn't allow any automated building or testing on pull requests (other folks' contributions to the code). Automated builds, in this context, give an early "litmus test" of the code changes being proposed.
 
-The files live in a separate **private repository**, used only for building. Only the build job can read it, using
-a read-only key. Users get just your add-on, because releases never include the private files.
+## This Boilerplate's Approach
+
+In this demonstration repository, the proprietary DLLs live in a separate **private repository**, used only for building. Only the build job can read it, using a read-only key.
+
+If you publish multiple Alibre add-ons, you can use _one_ private repository to serve this purpose for all your add-on repositories. You can also store DLLs from several versions of Alibre in this repository (providing that you have the licenses for each version), which makes it easy to compile add-ons for specific versions of Alibre.
+
+With this approach, we're able to achieve modern automated builds of the software and automated testing, _without_ violating Alibre's license terms (because the proprietary DLLs are accessible to the secure "runner" machines performing the build, but _not_ exposed to the general public).
 
 The diagrams in this guide share one color scheme:
 
@@ -41,12 +50,6 @@ flowchart LR
     classDef ci fill:#EDE9FE,stroke:#7C3AED,color:#4C1D95
     classDef output fill:#DCFCE7,stroke:#16A34A,color:#14532D
 ```
-
-Check Alibre's terms before copying their files anywhere, even to a private repository. Don't assume that what's
-allowed for one project applies to yours.
-
-If you can't copy the files, you can use a self-hosted runner on a machine with Alibre installed, or build on
-your own machine and let CI do only the packaging. The rest of this design still applies.
 
 ## What runs and when
 
@@ -99,8 +102,9 @@ that.
 
 Internal pull requests can run the full track because they don't add any risk. Anyone who can push a branch to
 this repository already has write access, so they could reach the key anyway. Dependabot's pull requests are the
-exception: they come from a branch here, but GitHub withholds repository secrets from them too, so they use the
-placeholder track.
+exception: they come from a branch here, but
+[GitHub treats them like forks](https://docs.github.com/en/code-security/dependabot/troubleshooting-dependabot/troubleshooting-dependabot-on-github-actions)
+and withholds repository secrets from them too, so they use the placeholder track.
 
 To run a contributor's change through the full track:
 
@@ -111,8 +115,7 @@ Merging to `main` also runs the full track, but by then the change is already in
 
 ## What the Installer Test checks
 
-**The Installer Test tests the installer, not the add-on.** CI runs the real Setup program on a clean Windows
-runner, then checks what it did to the machine. The test confirms that:
+**The Installer Test tests the installer, not the add-on.** CI runs the real Setup program on a clean Windows runner, then checks what it did to the machine. The test confirms that:
 
 - The expected files are in the correct folder under `%ProgramData%\Alibre AddOns\`.
 - The registry value Alibre looks for is in the 64-bit view, and points to that folder.
@@ -120,13 +123,11 @@ runner, then checks what it did to the machine. The test confirms that:
 - Installing again over an existing copy, as an upgrade does, leaves all of that correct.
 - Uninstalling removes all of that, and leaves other add-ons' registry values alone.
 
-An installer only copies the DLL and never loads it, so this test works with any DLL. The placeholder track uses a
-**placeholder DLL**, a tiny file built from `scripts/placeholder/Placeholder.cs` that needs no Alibre files. The
-full track and releases test the real DLL.
+An installer only copies the DLL to the right place, it never loads it, so this test works with any DLL. The placeholder track uses a **placeholder DLL**, a tiny file built from `scripts/placeholder/Placeholder.cs` that _does not_ require any of the proprietary Alibre DLLs to build. This means the "installer test" track _doesn't_ need access to the private repository where the proprietary Alibre DLLs live.
 
-**It stops there.** The runner doesn't have Alibre, so nothing ever loads the DLL, even the real one. The test
-can't tell you whether the add-on works, so that's a check you do by hand in Alibre. With a placeholder, it also
-can't show that the add-on's code compiles.
+The full track and releases test the real DLL (and has the necessary access to the private repository to pull that off).
+
+**It stops there.** The runner doesn't have Alibre, so nothing ever loads the DLL, even the real one. None of these tests can tell you whether the add-on _actually works in Alibre_ - you have to check that yourself. But these tests eliminate the need for you as the add-on developer to verify every detail of the installer's behavior at every release.
 
 ```mermaid
 flowchart LR
@@ -173,6 +174,22 @@ sequenceDiagram
 If any step fails, nothing is published, and you can delete the tag and try again. Once a version has been
 published, don't reuse its tag: release a new version instead.
 
+## Keys and secrets in plain terms
+
+Three things control access during a build:
+
+- **Deploy key:** a matching pair of files that gives access to one repository. The public half works like a padlock,
+  and you add it to the private repository. The private half is the only key that opens that padlock. This one is
+  read-only, so it can _download_ the proprietary Alibre DLLs from the private repository, but can't _modify_ the private repository.
+- **GitHub secret:** an encrypted value stored in a repository's settings, which a workflow can ask for by name. CI
+  uses two: `ALIBRE_SDK_DEPLOY_KEY` holds the private half of the key, and `ALIBRE_SDK_REPOSITORY` holds the private
+  repository's name. These are _not_ visible to the public - the public can see where they're used in the workflow, but they never see the actual values that grant access to the proprietary Alibre DLLs.
+- **`GITHUB_TOKEN`:** a temporary pass that GitHub creates for each job, which stops working when the job ends. It
+  only works on this repository. That's enough to publish a release here, but it can't read the private repository,
+  which is why the deploy key is needed.
+
+[Further reading](#further-reading) has more on each of these topics if you're unfamiliar.
+
 ## Keeping the key and the files safe
 
 The Compile Add-On job has the key, and the Package, Test and Publish job can write to the repository. Keeping
@@ -188,12 +205,12 @@ those in separate jobs means no job has both.
 These rules matter in a public repository:
 
 - **Use a deploy key.** Make it read-only and add it only to the private repository.
-- **Store the key as a repository secret.** A GitHub Environment limited to `main` and version tags would be
-  stricter, but internal pull requests couldn't use the key.
+- **Store the key as a repository secret,** and never in a file.
 - **Keep the private repository's name out of public files.** It's stored as a secret too, so GitHub masks it in
   logs. Masking isn't guaranteed, so its name alone must never be what protects the files: that's the key's job.
 - **Never give the key to external pull requests.** Don't use the `pull_request_target` trigger for jobs that
-  use it.
+  use it. [Preventing pwn requests](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/)
+  explains why.
 - **Keep the files out of anything others can download.** Upload only the staged files as artifacts, and don't
   use `actions/cache` on the folder that holds the private files.
 - **Pin versions.** Pin actions and the private repository to full commit SHAs, and pin the Inno Setup version.
@@ -229,8 +246,7 @@ The README and changelog are written by hand, so update those separately.
 | `scripts/verify-binary.ps1` | Every build | Only the expected files are staged. The DLL is x64 and has Alibre's entry points. The version, details and add-on GUID all match `project.psd1`. The copyright notice matches `LICENSE`. A copy of this boilerplate isn't still using its GUIDs. |
 | `scripts/test-installer.ps1` | Every Installer Test and release | Install, upgrade and uninstall work. The registry value is in the 64-bit view. Other add-ons' registry values are left alone. |
 
-CI can't start Alibre, so **it can't tell you whether the add-on works inside Alibre**. Install each release
-candidate and try it by hand.
+CI can't actually launch and use Alibre, so **it can't tell you whether the add-on works inside Alibre**. You as the developer still need to install each release candidate and try it by hand - the automated testing just takes some of the load off you by checking the easy backend details, like "does it compile?" and "does the installer put the files where it's supposed to?"
 
 ## Where things are
 
@@ -263,8 +279,7 @@ scripts/
 
 Do this once for your add-on. You need the [GitHub CLI](https://cli.github.com), signed in.
 
-1. **Check the license terms** for every file you plan to put in the private repository.
-2. **Create a private repository** for Alibre's files, such as `OWNER/my-addon-sdk-files`. You'll need a licensed
+2. **Create a private repository** for the proprietary Alibre DLLs, such as `MY-GITHUB-USERNAME/alibre-proprietary-sdk-files`. You'll need a licensed
    copy of Alibre Design, because the files come from its install folder:
 
    ```text
@@ -295,9 +310,10 @@ Do this once for your add-on. You need the [GitHub CLI](https://cli.github.com),
 3. **Fill in `project.psd1`:** set `SdkCommit` to the private repository's full commit SHA, and `SdkFolder` to the
    folder name, such as `v28`. To build against a newer Alibre later, add its files in a new folder and update
    both.
-4. **Create the key and store the secrets.** A key without a passphrase is needed for CI. Keep the private key out
-   of chat logs and scripts, and delete your local copy afterwards. Run these in Git Bash, and replace the example
-   names with yours:
+4. **Create the [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)
+   and store the [secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets).**
+   A key without a passphrase is needed for CI. Keep the private key out of chat logs and scripts, and delete your
+   local copy afterwards. Run these in Git Bash, and replace the example names with yours:
 
    ```bash
    ssh-keygen -t ed25519 -N "" -C "my-addon CI" -f deploy-key
@@ -309,3 +325,15 @@ Do this once for your add-on. You need the [GitHub CLI](https://cli.github.com),
 5. **Push to `main`,** and check that the Compile Add-On and Installer Test jobs pass. Then check the logs and
    artifacts to confirm that no private files or key text appear.
 6. **Release a pre-release first,** following [RELEASING.md](RELEASING.md), and install it in Alibre by hand.
+
+## Further reading
+
+| Topic | Source |
+|---|---|
+| How key pairs work | [SSH Key Authentication for Absolute Beginners](https://dev.to/risafj/ssh-key-authentication-for-absolute-beginners-in-plain-english-2m3f) |
+| Deploy keys | [Managing deploy keys](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys) |
+| Secrets | [Using secrets in GitHub Actions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets) |
+| `GITHUB_TOKEN` | [GITHUB_TOKEN](https://docs.github.com/en/actions/concepts/security/github_token) |
+| Why Dependabot uses the placeholder track | [Troubleshooting Dependabot on GitHub Actions](https://docs.github.com/en/code-security/dependabot/troubleshooting-dependabot/troubleshooting-dependabot-on-github-actions) |
+| Why external pull requests must not get the key | [Preventing pwn requests](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/) |
+| Pinning versions and other safety practices | [Secure use reference](https://docs.github.com/en/actions/reference/security/secure-use) |
