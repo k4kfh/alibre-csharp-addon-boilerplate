@@ -32,7 +32,8 @@ ribbon that opens a welcome window, ready to be replaced with yours.
 4. Replace the button and window in [`src/AddOn/AddOnInterface.cs`](src/AddOn/AddOnInterface.cs) with your add-on.
 5. Follow [Setting up compiling in CI](BUILD-SYSTEM.md#setting-up-compiling-in-ci) so CI can compile the real add-on.
 
-Until step 5 is done, CI can't compile your add-on or publish releases.
+Until step 5 is done, CI can't compile your add-on or publish releases. After that, [RELEASING.md](RELEASING.md)
+walks through publishing a release.
 
 ## Try the dummy add-on
 

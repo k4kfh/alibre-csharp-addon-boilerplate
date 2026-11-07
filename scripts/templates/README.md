@@ -37,7 +37,8 @@ You need Visual Studio with .NET desktop development, .NET Framework 4.8, and Al
 ./scripts/verify-binary.ps1 -Version 0.0.0
 ```
 
-See [BUILD-SYSTEM.md](BUILD-SYSTEM.md) for how the build and releases work.
+See [BUILD-SYSTEM.md](BUILD-SYSTEM.md) for how the build works, and [RELEASING.md](RELEASING.md) for how to publish
+a release.
 
 ## License
 

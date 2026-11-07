@@ -143,7 +143,7 @@ flowchart LR
 
 Add a `## [X.Y.Z]` section to `CHANGELOG.md`, push it to `main`, and run
 `scripts/publish-release.ps1 -Version X.Y.Z`. CI does the rest, and versions starting with `0.` are marked as
-pre-releases.
+pre-releases. [RELEASING.md](RELEASING.md) walks through each step.
 
 ```mermaid
 sequenceDiagram
@@ -237,6 +237,7 @@ candidate and try it by hand.
 ```text
 project.psd1                  Everything that identifies the add-on
 CHANGELOG.md                  Release notes come from here
+RELEASING.md                  Step-by-step guide to publishing a release
 src/AddOn/                    The add-on's code, project file, icon and .adc template
 deploy/                       Install and uninstall scripts for manual installs
 installer/setup.iss           Inno Setup script for the Setup program
@@ -307,4 +308,4 @@ Do this once for your add-on. You need the [GitHub CLI](https://cli.github.com),
 
 5. **Push to `main`,** and check that the Compile Add-On and Installer Test jobs pass. Then check the logs and
    artifacts to confirm that no private files or key text appear.
-6. **Release a pre-release first,** and install it in Alibre by hand.
+6. **Release a pre-release first,** following [RELEASING.md](RELEASING.md), and install it in Alibre by hand.
