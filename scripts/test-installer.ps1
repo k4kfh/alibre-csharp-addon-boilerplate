@@ -1,4 +1,5 @@
 #requires -Version 5.1
+
 <#
 .SYNOPSIS
     Tests that the Setup program installs, upgrades and uninstalls cleanly.

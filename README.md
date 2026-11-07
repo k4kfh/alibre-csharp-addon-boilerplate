@@ -26,6 +26,11 @@ This repository contains a dummy add-on for Alibre Design, written in C#, with r
    ./scripts/new-project.ps1 -AddOnName GearTools -FriendlyName "Gear Tools" -Repository you/gear-tools -Description "Creates gears."
    ```
 
+   By default, your add-on uses the MIT License, and Alibre's Add-On Manager links to your repository for its source
+   code. The script shows the text it will use. To change it, add `-License`, `-CopyrightText` or
+   `-DescriptionDetails`, or edit `project.psd1` afterwards. Run `Get-Help ./scripts/new-project.ps1 -Detailed` for
+   examples.
+
 3. Review the changes with `git diff`, then commit and push. CI should pass straight away, testing the installer with a placeholder DLL.
 4. Replace the button and window in [`src/AddOn/AddOnInterface.cs`](src/AddOn/AddOnInterface.cs) with your add-on's real functionality.
 5. Follow [Setting up compiling in CI](BUILD-SYSTEM.md#setting-up-compiling-in-ci) so CI can compile the real add-on.
@@ -53,7 +58,8 @@ Start Alibre. **Dummy Add-On** is on the ribbon's Add-ons tab. To remove it, clo
 
 ## Licensing
 
-This boilerplate repository is released under the [MIT License](LICENSE). Any add-ons you develop using this repo can use any license you like, and doesn't even have to be open source. Just make sure you update `LICENSE` and `project.psd1` to reflect your licensing choices.
+This boilerplate repository is released under the [MIT License](LICENSE). Any add-ons you develop using this repo can use any license you like, and doesn't even have to be open source. Just make sure you update `LICENSE` and `project.psd1` to reflect your licensing choices, including the
+`CopyrightText` that Alibre's Add-On Manager shows.
 
 Alibre and Alibre Design are trademarks of their owners. This project isn't affiliated with or endorsed by
 Alibre, LLC. It includes no Alibre files, and needs your own licensed copy of Alibre Design to run.

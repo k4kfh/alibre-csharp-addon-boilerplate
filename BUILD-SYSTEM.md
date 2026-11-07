@@ -218,7 +218,7 @@ These rules matter in a public repository:
 
 ## One place for project details
 
-The add-on's names, description, publisher, copyright notice, license name, links, GUIDs and the choice of files from
+The add-on's names, description, publisher, copyright notice, Add-On Manager text, links, GUIDs and the choice of files from
 the private repository live only in `project.psd1`. The private repository's name and key are secrets, and the
 version comes from the release tag. The build copies these into everything it
 produces, so a change needs just one edit, and no files need renaming.

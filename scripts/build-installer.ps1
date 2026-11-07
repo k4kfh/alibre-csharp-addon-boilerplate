@@ -1,4 +1,5 @@
 #requires -Version 5.1
+
 <#
 .SYNOPSIS
     Compiles the Setup program from artifacts\stage using Inno Setup.

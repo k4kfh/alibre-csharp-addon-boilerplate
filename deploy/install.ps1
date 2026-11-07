@@ -1,4 +1,5 @@
 #requires -Version 5.1
+
 <#
 .SYNOPSIS
     Installs the add-on without the Setup program.

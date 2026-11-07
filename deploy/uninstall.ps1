@@ -1,4 +1,5 @@
 #requires -Version 5.1
+
 <#
 .SYNOPSIS
     Removes a copy of the add-on installed by install.ps1.

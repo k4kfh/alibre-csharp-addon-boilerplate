@@ -1,4 +1,5 @@
 #requires -Version 5.1
+
 <#
 .SYNOPSIS
     Puts the Setup program, portable ZIP and checksums in artifacts\release.

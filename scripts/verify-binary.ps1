@@ -1,4 +1,5 @@
 #requires -Version 5.1
+
 <#
 .SYNOPSIS
     Checks the staged files before packaging. Needs no Alibre install.
@@ -110,11 +111,11 @@ if ($identifier -ne $project.Identifier) {
     Add-Problem "The .adc Identifier is '$identifier', expected '$($project.Identifier)'."
 }
 
-$copyright = [string] $addOn.Copyright
-foreach ($part in $project.Copyright, $project.License, $project.SourceUrl) {
-    if (-not $copyright.Contains($part)) {
-        Add-Problem "The .adc copyright text doesn't include '$part'."
-    }
+if (-not $project.CopyrightText.Contains($project.Copyright)) {
+    Add-Problem "CopyrightText in project.psd1 doesn't include the notice '$($project.Copyright)'."
+}
+if ([string] $addOn.Copyright -ne $project.CopyrightText) {
+    Add-Problem "The .adc copyright text doesn't match CopyrightText in project.psd1."
 }
 $license = Get-Content -LiteralPath (Join-Path $repo 'LICENSE') -Raw
 if (-not $license.Contains($project.Copyright)) {
@@ -122,23 +123,10 @@ if (-not $license.Contains($project.Copyright)) {
 }
 
 # Line breaks must reach Alibre as CRLF.
-$lines = $addOn.Description -split "`r`n"
-if ($lines.Count -ne 4) {
-    Add-Problem "The .adc description has $($lines.Count) CRLF-separated lines, expected 4."
-}
-else {
-    if ($lines[0] -ne $project.Description) {
-        Add-Problem "The .adc description's first line is '$($lines[0])'."
-    }
-    if ($lines[1] -ne "Add-On Version : v$Version") {
-        Add-Problem "The .adc description's version line is '$($lines[1])'."
-    }
-    if (-not $lines[2].EndsWith(" : $($project.SourceUrl)")) {
-        Add-Problem "The .adc description's source line is '$($lines[2])'."
-    }
-    if (-not $lines[3].EndsWith(" : $($project.ReportProblemUrl)")) {
-        Add-Problem "The .adc description's problem report line is '$($lines[3])'."
-    }
+$expectedLines = @($project.Description, "Add-On Version : v$Version") + @($project.DescriptionDetails)
+$lines = @($addOn.Description -split "`r`n")
+if (($lines -join '|') -ne ($expectedLines -join '|')) {
+    Add-Problem "The .adc description doesn't match project.psd1. Found these CRLF-separated lines: $($lines -join ' / ')"
 }
 
 if ($problems.Count -gt 0) {

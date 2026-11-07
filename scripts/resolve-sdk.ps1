@@ -1,4 +1,5 @@
 #requires -Version 5.1
+
 <#
 .SYNOPSIS
     Finds the Alibre Design folder holding the files the add-on compiles against.

@@ -1,4 +1,5 @@
 #requires -Version 5.1
+
 <#
 .SYNOPSIS
     Returns a version's section from CHANGELOG.md, and fails if there isn't one.

@@ -1,4 +1,5 @@
 #requires -Version 5.1
+
 <#
 .SYNOPSIS
     Turns a copy of this boilerplate into your own add-on project.
@@ -13,15 +14,37 @@
 .PARAMETER Repository
     Your GitHub repository, as owner/name.
 .PARAMETER Description
-    One sentence about what the add-on does.
+    One sentence about what the add-on does. It's the first line of the add-on's description in Alibre's
+    Add-On Manager.
+.PARAMETER License
+    The name of your license. Defaults to MIT License. For another license, also replace the text in LICENSE.
+.PARAMETER CopyrightText
+    The Copyright field in Alibre's Add-On Manager. It must include your copyright notice. Defaults to the notice,
+    the license name, and a link to your repository for the source code.
+.PARAMETER DescriptionDetails
+    Lines for the Add-On Manager's description, after Description and the version line. Defaults to links to your
+    repository and to report a problem. Pass @() for none.
+.EXAMPLE
+    ./scripts/new-project.ps1 -AddOnName GearTools -FriendlyName "Gear Tools" -Repository you/gear-tools -Description "Creates gears."
+.EXAMPLE
+    ./scripts/new-project.ps1 -AddOnName GearTools -FriendlyName "Gear Tools" -Repository you/gear-tools -Description "Creates gears." -License "Proprietary" -CopyrightText "Copyright (c) 2026 you. All rights reserved." -DescriptionDetails @("Support : support@example.com")
 #>
+# Named options only, so a value given without its option name can't land in the wrong one.
+[CmdletBinding(PositionalBinding = $false)]
 param(
     [Parameter(Mandatory)] [ValidatePattern('^[A-Za-z][A-Za-z0-9]*$')] [string] $AddOnName,
     [Parameter(Mandatory)] [string] $FriendlyName,
     [Parameter(Mandatory)] [ValidatePattern('^[\w.-]+/[\w.-]+$')] [string] $Repository,
-    [Parameter(Mandatory)] [string] $Description
+    [Parameter(Mandatory)] [string] $Description,
+    [string] $License = 'MIT License',
+    [string] $CopyrightText,
+    [AllowEmptyCollection()] [string[]] $DescriptionDetails
 )
 $ErrorActionPreference = 'Stop'
+
+foreach ($text in @($FriendlyName, $Description, $License, $CopyrightText) + @($DescriptionDetails)) {
+    if ($text -match "[\r\n]") { throw 'Values must be single lines. Use -DescriptionDetails for more description lines.' }
+}
 
 $repo = Split-Path -Parent $PSScriptRoot
 $current = Import-PowerShellDataFile -LiteralPath (Join-Path $repo 'project.psd1')
@@ -36,6 +59,21 @@ $publisher = $Repository.Split('/')[0]
 $title = "$FriendlyName for Alibre Design"
 $url = "https://github.com/$Repository"
 $copyright = "Copyright (c) $((Get-Date).Year) $publisher"
+if (-not $PSBoundParameters.ContainsKey('CopyrightText')) {
+    $CopyrightText = "$copyright. Released under the $License. See $url for the full source code and license text."
+}
+if (-not $CopyrightText.Contains($copyright)) {
+    throw "-CopyrightText must include the copyright notice '$copyright'."
+}
+if (-not $PSBoundParameters.ContainsKey('DescriptionDetails')) {
+    $DescriptionDetails = @(
+        "Add-On Documentation and Source Code : $url"
+        "To Report a Problem : $url/issues/new"
+    )
+}
+$detailsValue = if (@($DescriptionDetails).Count -eq 0) { '@()' } else {
+    "@(`r`n" + ((@($DescriptionDetails) | ForEach-Object { '        ' + (Format-Value $_) }) -join "`r`n") + "`r`n    )"
+}
 
 $projectFile = @"
 # Everything that identifies this add-on, in one place. The build copies these into the .adc file, the DLL's
@@ -51,8 +89,12 @@ $projectFile = @"
     Publisher        = $(Format-Value $publisher)
     # The notice must also appear in LICENSE; scripts\verify-binary.ps1 checks that it does.
     Copyright        = $(Format-Value $copyright)
-    License          = 'MIT License'
-    SourceUrl        = $(Format-Value $url)
+    # The Copyright field in Alibre's Add-On Manager. It must include the notice above. Change it if your add-on
+    # uses another license, or its source code isn't public.
+    CopyrightText    = $(Format-Value $CopyrightText)
+    # Lines for the Add-On Manager's description, after Description and the version line. Use @() for none.
+    DescriptionDetails = $detailsValue
+    SourceUrl       = $(Format-Value $url)
     ReportProblemUrl = $(Format-Value "$url/issues/new")
     ReleasesUrl      = $(Format-Value "$url/releases")
 
@@ -71,8 +113,8 @@ $projectFile = @"
 [IO.File]::WriteAllText((Join-Path $repo 'project.psd1'), $projectFile)
 
 $licensePath = Join-Path $repo 'LICENSE'
-$license = [IO.File]::ReadAllText($licensePath)
-[IO.File]::WriteAllText($licensePath, ($license -replace 'Copyright \(c\) \d{4} .+', $copyright))
+$licenseFileText = [IO.File]::ReadAllText($licensePath)
+[IO.File]::WriteAllText($licensePath, ($licenseFileText -replace 'Copyright \(c\) \d{4} .+', $copyright))
 
 $readme = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'templates\README.md'))
 $readme = $readme.Replace('{{Title}}', $title).Replace('{{FriendlyName}}', $FriendlyName).Replace('{{AddOnName}}', $AddOnName).
@@ -93,7 +135,19 @@ This project follows [Keep a Changelog](https://keepachangelog.com) and
 
 "@)
 
-Write-Host "Set up $AddOnName with new GUIDs. Next:"
+Write-Host "Set up $AddOnName with new GUIDs."
+Write-Host ''
+Write-Host "Alibre's Add-On Manager will show this, which you can change in project.psd1:"
+Write-Host "  Copyright:   $CopyrightText"
+Write-Host "  Description: $Description"
+Write-Host '               Add-On Version : vX.Y.Z'
+foreach ($line in @($DescriptionDetails)) { Write-Host "               $line" }
+if ($License -ne 'MIT License') {
+    Write-Host ''
+    Write-Host "LICENSE still has the MIT License text. Replace it with your license's text, keeping the line '$copyright'." -ForegroundColor Yellow
+}
+Write-Host ''
+Write-Host 'Next:'
 Write-Host '  1. Review the changes with git diff, and commit them.'
 Write-Host '  2. Change the add-on in src\AddOn, starting with the button and window in AddOnInterface.cs.'
 Write-Host '  3. Follow "Setting up compiling in CI" in BUILD-SYSTEM.md.'

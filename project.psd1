@@ -12,8 +12,15 @@
     Publisher        = 'k4kfh'
     # The notice must also appear in LICENSE; scripts\verify-binary.ps1 checks that it does.
     Copyright        = 'Copyright (c) 2026 k4kfh'
-    License          = 'MIT License'
-    SourceUrl        = 'https://github.com/k4kfh/alibre-csharp-addon-boilerplate'
+    # The Copyright field in Alibre's Add-On Manager. It must include the notice above. Change it if your add-on
+    # uses another license, or its source code isn't public.
+    CopyrightText    = 'Copyright (c) 2026 k4kfh. Released under the MIT License. See https://github.com/k4kfh/alibre-csharp-addon-boilerplate for the full source code and license text.'
+    # Lines for the Add-On Manager's description, after Description and the version line. Use @() for none.
+    DescriptionDetails = @(
+        'Add-On Documentation and Source Code : https://github.com/k4kfh/alibre-csharp-addon-boilerplate'
+        'To Report a Problem : https://github.com/k4kfh/alibre-csharp-addon-boilerplate/issues/new'
+    )
+    SourceUrl       = 'https://github.com/k4kfh/alibre-csharp-addon-boilerplate'
     ReportProblemUrl = 'https://github.com/k4kfh/alibre-csharp-addon-boilerplate/issues/new'
     ReleasesUrl      = 'https://github.com/k4kfh/alibre-csharp-addon-boilerplate/releases'
 

@@ -1,4 +1,5 @@
 #requires -Version 5.1
+
 <#
 .SYNOPSIS
     Builds the add-on and puts the files to package in artifacts\stage.
@@ -78,8 +79,7 @@ $adc.SelectSingleNode('/AlibreDesignAddOn/DLL').SetAttribute('location', "$name.
 $adc.SelectSingleNode('/AlibreDesignAddOn/Icon').SetAttribute('location', "$name.ico")
 $adc.SelectSingleNode('/AlibreDesignAddOn/Menu').SetAttribute('text', $project.FriendlyName)
 $adc.SelectSingleNode("/AlibreDesignAddOn/Property[@name='Identifier']").SetAttribute('value', $project.Identifier)
-$adc.SelectSingleNode('/AlibreDesignAddOn/Copyright').InnerText =
-    "$($project.Copyright). Released under the $($project.License). See $($project.SourceUrl) for the full source code and license text."
+$adc.SelectSingleNode('/AlibreDesignAddOn/Copyright').InnerText = $project.CopyrightText
 
 # XML parsers turn a literal line break into LF, which many Windows text boxes don't show as a new line.
 # Character references survive parsing as CRLF, but the DOM can't write them, so they're swapped in as text.
@@ -87,8 +87,7 @@ $lineBreak = '__ADC_LINE_BREAK__'
 $adc.SelectSingleNode('/AlibreDesignAddOn/Description').InnerText = @(
     $project.Description
     "Add-On Version : v$Version"
-    "Add-On Documentation and Source Code : $($project.SourceUrl)"
-    "To Report a Problem : $($project.ReportProblemUrl)"
+    @($project.DescriptionDetails)
 ) -join $lineBreak
 [IO.File]::WriteAllText((Join-Path $stageDir "$name.adc"), $adc.OuterXml.Replace($lineBreak, '&#13;&#10;'))
 

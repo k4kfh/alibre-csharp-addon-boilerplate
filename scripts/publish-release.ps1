@@ -1,4 +1,5 @@
 #requires -Version 5.1
+
 <#
 .SYNOPSIS
     Starts a release by checking the repo and changelog, then pushing the version tag.
