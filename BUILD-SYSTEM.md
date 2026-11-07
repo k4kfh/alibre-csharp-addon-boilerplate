@@ -50,9 +50,10 @@ your own machine and let CI do only the packaging. The rest of this design still
 
 ## What runs and when
 
-CI first checks whether the run can see the deploy key, and that decides which track it follows.
+CI first checks whether the run can see two secrets: the deploy key, and the private repository's name. That decides
+which track it follows.
 
-| Trigger | Sees the key? | What happens | Publishes anything? |
+| Trigger | Sees the secrets? | What happens | Publishes anything? |
 |---|---|---|---|
 | External pull request, from a fork | No | Tests the installer with a placeholder DLL | No |
 | Dependabot pull request | No | Tests the installer with a placeholder DLL | No |
@@ -60,7 +61,7 @@ CI first checks whether the run can see the deploy key, and that decides which t
 | Push to `main` | Yes, once set up | Same as an internal pull request | No |
 | Version tag, such as `v1.2.3` | Required | Compiles, packages and tests the real add-on, then publishes it | Yes, if every step passes |
 
-A new copy of this repository has no key yet, so it follows the placeholder track until you
+A new copy of this repository has no secrets yet, so it follows the placeholder track until you
 [set up compiling](#setting-up-compiling-in-ci). Its CI passes from the first push, and there are no repository names
 to change in the workflows.
 
@@ -179,7 +180,7 @@ those in separate jobs means no job has both.
 
 | Job | Has the key | Can write to the repo |
 |---|---|---|
-| Choose Track | Only checks that it exists | No |
+| Choose Track | Only checks that the secrets exist | No |
 | Compile Add-On | Yes | No |
 | Installer Test | No | No |
 | Package, Test and Publish | No | Yes |
@@ -189,6 +190,8 @@ These rules matter in a public repository:
 - **Use a deploy key.** Make it read-only and add it only to the private repository.
 - **Store the key as a repository secret.** A GitHub Environment limited to `main` and version tags would be
   stricter, but internal pull requests couldn't use the key.
+- **Keep the private repository's name out of public files.** It's stored as a secret too, so GitHub masks it in
+  logs. Masking isn't guaranteed, so its name alone must never be what protects the files: that's the key's job.
 - **Never give the key to external pull requests.** Don't use the `pull_request_target` trigger for jobs that
   use it.
 - **Keep the files out of anything others can download.** Upload only the staged files as artifacts, and don't
@@ -198,8 +201,9 @@ These rules matter in a public repository:
 
 ## One place for project details
 
-The add-on's names, description, publisher, copyright notice, license name, links, GUIDs and private repository details
-live only in `project.psd1`. The version comes from the release tag. The build copies these into everything it
+The add-on's names, description, publisher, copyright notice, license name, links, GUIDs and the choice of files from
+the private repository live only in `project.psd1`. The private repository's name and key are secrets, and the
+version comes from the release tag. The build copies these into everything it
 produces, so a change needs just one edit, and no files need renaming.
 
 ```mermaid
@@ -259,28 +263,46 @@ scripts/
 Do this once for your add-on. You need the [GitHub CLI](https://cli.github.com), signed in.
 
 1. **Check the license terms** for every file you plan to put in the private repository.
-2. **Create a private repository** with `AlibreX.dll` and `AlibreAddOn.dll` from Alibre's `Program` folder, in a
-   folder named for the Alibre version, such as `v28/`. Add a README saying it must stay private. If your
-   add-on uses other Alibre files, add them here and to the list in `scripts/resolve-sdk.ps1`.
+2. **Create a private repository** for Alibre's files, such as `OWNER/my-addon-sdk-files`. You'll need a licensed
+   copy of Alibre Design, because the files come from its install folder:
 
-   To check you have them all, build against a folder holding only those files. The compiler names anything
-   missing. Building against Alibre's whole `Program` folder can hide missing files.
+   ```text
+   C:\Program Files\Alibre Design <version>\Program\
+   ```
+
+   For example, `C:\Program Files\Alibre Design 28.1.1.28228\Program\`. Lay out the repository like this, with one
+   folder for each Alibre version:
+
+   ```text
+   my-addon-sdk-files/
+   ├── README.md          Says that this repository must stay private
+   ├── .gitattributes     One line: *.dll binary
+   └── v28/
+       ├── AlibreX.dll
+       └── AlibreAddOn.dll
+   ```
+
+   If your add-on uses other files from that folder, add them too, and add them to the list in
+   `scripts/resolve-sdk.ps1`. To check you have them all, build against a folder holding only those files. The
+   compiler names anything missing. Building against Alibre's whole `Program` folder can hide missing files.
 
    ```powershell
    $env:ALIBRE_SDK_DIR = 'C:\path\to\folder-with-only-those-files'
    ./scripts/build.ps1 -Version 0.0.0
    ```
 
-3. **Fill in `project.psd1`:** set `SdkRepository` to `owner/name`, `SdkCommit` to the private repository's full
-   commit SHA, and `SdkFolder` to the folder name. To build against a newer Alibre later, add its files in a new
-   folder and update `SdkCommit` and `SdkFolder`.
-4. **Create the key and store it.** A key without a passphrase is needed for CI. Keep the private key out of chat
-   logs and scripts, and delete your local copy afterwards:
+3. **Fill in `project.psd1`:** set `SdkCommit` to the private repository's full commit SHA, and `SdkFolder` to the
+   folder name, such as `v28`. To build against a newer Alibre later, add its files in a new folder and update
+   both.
+4. **Create the key and store the secrets.** A key without a passphrase is needed for CI. Keep the private key out
+   of chat logs and scripts, and delete your local copy afterwards. Run these in Git Bash, and replace the example
+   names with yours:
 
    ```bash
    ssh-keygen -t ed25519 -N "" -C "my-addon CI" -f deploy-key
    gh repo deploy-key add deploy-key.pub --repo OWNER/my-addon-sdk-files --title "my-addon CI"
    gh secret set ALIBRE_SDK_DEPLOY_KEY --repo OWNER/my-addon < deploy-key
+   gh secret set ALIBRE_SDK_REPOSITORY --repo OWNER/my-addon --body "OWNER/my-addon-sdk-files"
    ```
 
 5. **Push to `main`,** and check that the Compile Add-On and Installer Test jobs pass. Then check the logs and

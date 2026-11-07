@@ -1,8 +1,11 @@
 name: Compile the add-on
 description: Fetches the Alibre files the add-on compiles against, builds it, verifies artifacts/stage, and removes those files.
 inputs:
+  sdk-repository:
+    description: The private repository holding those files, as owner/name. Pass it from a secret.
+    required: true
   deploy-key:
-    description: SSH key with read access to the private repository holding those files
+    description: SSH key with read access to that repository
     required: true
   version:
     description: x.y.z, with no leading v
@@ -10,25 +13,24 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Check for the deploy key
-      if: inputs.deploy-key == ''
+    - name: Check for the secrets
+      if: inputs.deploy-key == '' || inputs.sdk-repository == ''
       shell: powershell
-      run: throw 'The ALIBRE_SDK_DEPLOY_KEY secret is not available to this run. See BUILD-SYSTEM.md.'
-    - name: Read the private repository's details
+      run: throw 'The ALIBRE_SDK_DEPLOY_KEY and ALIBRE_SDK_REPOSITORY secrets are not both available to this run. See BUILD-SYSTEM.md.'
+    - name: Read which files to use
       id: sdk
       shell: powershell
       run: |
         $project = Import-PowerShellDataFile -LiteralPath project.psd1
-        if (-not $project.SdkRepository -or -not $project.SdkCommit -or -not $project.SdkFolder) {
-          throw 'Set SdkRepository, SdkCommit and SdkFolder in project.psd1. See BUILD-SYSTEM.md.'
+        if (-not $project.SdkCommit -or -not $project.SdkFolder) {
+          throw 'Set SdkCommit and SdkFolder in project.psd1. See BUILD-SYSTEM.md.'
         }
-        "repository=$($project.SdkRepository)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
         "commit=$($project.SdkCommit)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
         "folder=$($project.SdkFolder)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
     - name: Fetch the Alibre files
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
-        repository: ${{ steps.sdk.outputs.repository }}
+        repository: ${{ inputs.sdk-repository }}
         ref: ${{ steps.sdk.outputs.commit }}
         ssh-key: ${{ inputs.deploy-key }}
         path: alibre-sdk

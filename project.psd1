@@ -22,9 +22,9 @@
     Identifier       = '{46C80F03-8F3F-41B3-9615-9DF167D2C195}'
     InstallerAppId   = '{AC4A1311-1246-4798-90C2-7429A6AB2C74}'
 
-    # The private repository holding Alibre's DLLs, for compiling in CI. See BUILD-SYSTEM.md.
+    # Which files to use from the private repository holding Alibre's DLLs. See BUILD-SYSTEM.md. That
+    # repository's name isn't here: it's in the ALIBRE_SDK_REPOSITORY secret, so it stays out of public view.
     # SdkCommit is a full commit SHA, so a build can't change Alibre versions without an edit here.
-    SdkRepository    = 'OWNER/my-addon-sdk-files'
-    SdkCommit        = 'dc0a0f00f15fee69f617eae072721a7260008cb4'
+    SdkCommit       = 'dc0a0f00f15fee69f617eae072721a7260008cb4'
     SdkFolder        = 'v28'
 }

@@ -61,10 +61,10 @@ $projectFile = @"
     Identifier       = '$(New-Guid-Text)'
     InstallerAppId   = '$(New-Guid-Text)'
 
-    # The private repository holding Alibre's DLLs, for compiling in CI. See BUILD-SYSTEM.md.
+    # Which files to use from the private repository holding Alibre's DLLs. See BUILD-SYSTEM.md. That
+    # repository's name isn't here: it's in the ALIBRE_SDK_REPOSITORY secret, so it stays out of public view.
     # SdkCommit is a full commit SHA, so a build can't change Alibre versions without an edit here.
-    SdkRepository    = ''
-    SdkCommit        = ''
+    SdkCommit       = ''
     SdkFolder        = 'v28'
 }
 "@

@@ -33,6 +33,7 @@ jobs:
         run: ./scripts/get-release-notes.ps1 -Version $env:VERSION | Out-Null
       - uses: ./.github/actions/compile
         with:
+          sdk-repository: ${{ secrets.ALIBRE_SDK_REPOSITORY }}
           deploy-key: ${{ secrets.ALIBRE_SDK_DEPLOY_KEY }}
           version: ${{ steps.version.outputs.value }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
