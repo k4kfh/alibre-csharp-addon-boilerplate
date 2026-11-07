@@ -1,0 +1,20 @@
+# Build output
+artifacts/
+x64/
+bin/
+obj/
+.vs/
+*.user
+
+# Alibre and DevExpress files are referenced at build time and never published
+Reference/
+third_party/
+alibre-sdk/
+AlibreX*
+AlibreAddOn*.dll
+AlibreAddOn*.tlb
+DevExpress*.dll
+*.tlb
+
+# local working notes
+.claude/

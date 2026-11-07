@@ -1,0 +1,79 @@
+name: release
+
+# Pushing a version tag starts this; scripts/publish-release.ps1 does that after its checks.
+# One job compiles the add-on. A separate job, which never sees the key or Alibre's files, packages,
+# tests and publishes it. If anything fails, nothing is published.
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    name: Compile Add-On
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Read version
+        id: version
+        shell: powershell
+        run: |
+          $version = $env:TAG.TrimStart('v')
+          "value=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
+      - name: Check changelog
+        shell: powershell
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: ./scripts/get-release-notes.ps1 -Version $env:VERSION | Out-Null
+      - uses: ./.github/actions/compile
+        with:
+          deploy-key: ${{ secrets.ALIBRE_SDK_DEPLOY_KEY }}
+          version: ${{ steps.version.outputs.value }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: stage
+          path: artifacts/stage
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Package, Test and Publish
+    needs: compile
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_name }}
+      VERSION: ${{ needs.compile.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: stage
+          path: artifacts/stage
+      - uses: ./.github/actions/package
+        with:
+          version: ${{ needs.compile.outputs.version }}
+      - name: Publish release
+        shell: powershell
+        run: |
+          $notesFile = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          [IO.File]::WriteAllText($notesFile, (./scripts/get-release-notes.ps1 -Version $env:VERSION))
+          $assets = (Get-ChildItem artifacts/release -File).FullName
+          $options = @('--verify-tag', '--title', $env:TAG, '--notes-file', $notesFile)
+          if ($env:VERSION.StartsWith('0.')) { $options += '--prerelease' }
+          gh release create $env:TAG $assets $options
+          if ($LASTEXITCODE -ne 0) { throw 'Publishing the release failed.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: installer-logs
+          path: artifacts/logs
+          if-no-files-found: ignore

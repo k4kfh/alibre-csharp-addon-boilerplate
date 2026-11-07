@@ -1,0 +1,10 @@
+<AlibreDesignAddOn specificationVersion="2" friendlyName="">
+   <Author name="" link=""/>
+   <DLL type="Managed" loadedWhen="Startup" location=""/>
+   <Copyright></Copyright>
+   <Icon location=""/>
+   <Menu text=""/>
+   <Description></Description>
+   <Workspace type="Always"/>
+   <Property name="Identifier" value=""/>
+</AlibreDesignAddOn>

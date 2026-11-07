@@ -1,0 +1,54 @@
+name: Compile the add-on
+description: Fetches the Alibre files the add-on compiles against, builds it, verifies artifacts/stage, and removes those files.
+inputs:
+  deploy-key:
+    description: SSH key with read access to the private repository holding those files
+    required: true
+  version:
+    description: x.y.z, with no leading v
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Check for the deploy key
+      if: inputs.deploy-key == ''
+      shell: powershell
+      run: throw 'The ALIBRE_SDK_DEPLOY_KEY secret is not available to this run. See BUILD-SYSTEM.md.'
+    - name: Read the private repository's details
+      id: sdk
+      shell: powershell
+      run: |
+        $project = Import-PowerShellDataFile -LiteralPath project.psd1
+        if (-not $project.SdkRepository -or -not $project.SdkCommit -or -not $project.SdkFolder) {
+          throw 'Set SdkRepository, SdkCommit and SdkFolder in project.psd1. See BUILD-SYSTEM.md.'
+        }
+        "repository=$($project.SdkRepository)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
+        "commit=$($project.SdkCommit)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
+        "folder=$($project.SdkFolder)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
+    - name: Fetch the Alibre files
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: ${{ steps.sdk.outputs.repository }}
+        ref: ${{ steps.sdk.outputs.commit }}
+        ssh-key: ${{ inputs.deploy-key }}
+        path: alibre-sdk
+        persist-credentials: false
+    - name: Check the Alibre files
+      shell: powershell
+      env:
+        ALIBRE_SDK_DIR: ${{ github.workspace }}\alibre-sdk\${{ steps.sdk.outputs.folder }}
+      run: ./scripts/resolve-sdk.ps1 -GitHubEnv $env:GITHUB_ENV
+    - name: Build
+      shell: powershell
+      env:
+        VERSION: ${{ inputs.version }}
+      run: ./scripts/build.ps1 -Version $env:VERSION
+    - name: Verify staged files
+      shell: powershell
+      env:
+        VERSION: ${{ inputs.version }}
+      run: ./scripts/verify-binary.ps1 -Version $env:VERSION
+    - name: Remove the Alibre files
+      if: always()
+      shell: powershell
+      run: Remove-Item -LiteralPath alibre-sdk -Recurse -Force -ErrorAction SilentlyContinue

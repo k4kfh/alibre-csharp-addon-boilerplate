@@ -1,0 +1,32 @@
+name: Package and test
+description: Verifies artifacts/stage, builds the installer, tests it, and makes the release assets.
+inputs:
+  version:
+    description: x.y.z, with no leading v
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install Inno Setup
+      shell: powershell
+      run: choco install innosetup --version 6.7.1 --no-progress -y
+    - name: Verify staged files
+      shell: powershell
+      env:
+        VERSION: ${{ inputs.version }}
+      run: ./scripts/verify-binary.ps1 -Version $env:VERSION
+    - name: Build installer
+      shell: powershell
+      env:
+        VERSION: ${{ inputs.version }}
+      run: ./scripts/build-installer.ps1 -Version $env:VERSION
+    - name: Test install, upgrade and uninstall
+      shell: powershell
+      env:
+        VERSION: ${{ inputs.version }}
+      run: ./scripts/test-installer.ps1 -Version $env:VERSION
+    - name: Make release assets
+      shell: powershell
+      env:
+        VERSION: ${{ inputs.version }}
+      run: ./scripts/make-release-assets.ps1 -Version $env:VERSION
