@@ -1,9 +1,11 @@
-# C# Add-On Boilerplate for Alibre Design
+# Boilerplate for C# Alibre Design Add-Ons, with Automated Builds!
+
+**An easy starting point for developing your own Alibre Design add-on using C#, _with_ proper automated builds/releases, _without_ self-hosted runners _or_ unauthorized publishing of proprietary Alibre DLLs!**
 
 [![CI](https://github.com/k4kfh/alibre-csharp-addon-boilerplate/actions/workflows/ci.yml/badge.svg)](https://github.com/k4kfh/alibre-csharp-addon-boilerplate/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A dummy add-on for Alibre Design, written in C#, with reliable builds, installers and versioning already set up. **This is not a useful add-on! It's a starting point for you to build your own open-source Alibre Design add-ons, with some convenient build/test automations already set up.**
+This repository contains a dummy add-on for Alibre Design, written in C#, with reliable builds, installers and versioning already set up. **This is not a useful add-on! It's a starting point for you to build your own open-source Alibre Design add-ons, with some convenient build/test automations already set up.**
 
 ## What you get
 
